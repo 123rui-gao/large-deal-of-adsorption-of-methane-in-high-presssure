@@ -1,0 +1,37 @@
+SimulationType                MonteCarlo
+NumberOfCycles                5000
+NumberOfInitializationCycles  5000
+PrintEvery                    1000
+RestartFile                   no
+
+Forcefield                    ExampleZeolitesForceField
+UseChargesFromCIFFile         yes
+
+Framework 0
+FrameworkName {cif_name}
+CutOffVDW {cutoff}
+UnitCells {unitcell}
+HeliumVoidFraction {heliumvoidfraction}
+
+ExternalTemperature 298
+ExternalPressure 6500000
+
+Component 0 MoleculeName              methane
+
+            MoleculeDefinition        ExampleDefinitions
+
+            IdealGasRosenbluthWeight  1.0
+             
+            TranslationProbability    1.0
+            
+            RotationProbability       1.0
+            
+            ReinsertionProbability    1.0
+            
+            CBMCProbability           1.0
+            
+            IdentityChangeProbability 0.0
+            
+            SwapProbability           1.0
+            
+            CreateNumberOfMolecules   0

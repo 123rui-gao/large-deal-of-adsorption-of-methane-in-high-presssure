@@ -264,6 +264,7 @@ def check_parameters():
     cutoffvdm = option_dic['cutoffvdm']
     max_threads = option_dic['max_threads']
     file_path=option_dic['file_path']
+    
 
     if len(raspa_dir) > 0:
         raspa_dir = os.path.abspath(raspa_dir)
@@ -348,6 +349,17 @@ def main():
         q.get()
         input_text = generate_simulation_input(
             template=template, cutoff=cutoffvdm, cif_dir=cif_dir, cif_file=cif,file_path=file_path)
+        cif_name = cif[:-4]
+        df = pd.read_csv(file_path)
+        filtered_data = df[df['name'] == cif_name]
+        finished = filtered_data['finished'].values[0]
+        heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]
+        warning_message = filtered_data['warning'].values[0]
+
+        if finished != "True" or pd.isna(heliumvoidfraction) or (pd.notna(warning_message) and warning_message != ""):
+            print(f"heliumvoidfraction计算有误 for {cif_name}, finished: {finished}, warning: {warning_message}, value: {heliumvoidfraction}")
+            continue
+
         thread = threading.Thread(target=work, args=(cif_dir, cif, raspa_dir,
                                                      result_file, components, headers, input_text, lock, q))
         thread.start()
@@ -359,6 +371,7 @@ def main():
             t.join()
 
     print("\033[0;30;42m\n完成！(Finish)\n\033[0m")
+
 
 
 if __name__ == '__main__':

@@ -356,8 +356,14 @@ def main():
         heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]
         warning_message = filtered_data['warning'].values[0]
 
-        if finished != "True" or pd.isna(heliumvoidfraction) or (pd.notna(warning_message) and warning_message != ""):
-            print(f"heliumvoidfraction计算有误 for {cif_name}, finished: {finished}, warning: {warning_message}, value: {heliumvoidfraction}")
+         # 检查warning_message是否为非NaN且非空字符串
+        if finished == "True" and isinstance(heliumvoidfraction, float) and (pd.isna(warning_message) or warning_message.strip() == ""):
+        # 如果没有有效警告，则继续处理
+            print(f"Processing {cif_name} with HeliumVoidFraction {heliumvoidfraction}")
+        # 在这里可以继续执行处理或计算的代码
+        else:
+        # 如果存在警告，打印错误信息
+            print(f"heliumvoidfraction计算有误 for {cif_name}, finished: {finished}, warning: {warning_message if pd.notna(warning_message) else 'None'}, value: {heliumvoidfraction}")
             continue
 
         thread = threading.Thread(target=work, args=(cif_dir, cif, raspa_dir,

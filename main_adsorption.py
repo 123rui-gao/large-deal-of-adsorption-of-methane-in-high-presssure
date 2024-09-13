@@ -8,7 +8,7 @@ import time
 from queue import Queue
 from threading import Lock
 import pandas as pd
-
+import numpy as np
 
 class RASPA_Output_Data():
     '''
@@ -351,6 +351,7 @@ def main():
             template=template, cutoff=cutoffvdm, cif_dir=cif_dir, cif_file=cif,file_path=file_path)
         cif_name = cif[:-4]
         df = pd.read_csv(file_path)
+        df['finished'] = df['finished'].fillna(False).astype(bool)
         filtered_data = df[df['name'] == cif_name]
         finished = filtered_data['finished'].values[0]
         heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]
@@ -358,10 +359,10 @@ def main():
 
 
          # 检查warning_message是否为非NaN且非空字符串
-        if not (finished == True and isinstance(heliumvoidfraction, float) and pd.isna(warning_message)):
+        if not (pd.notna(finished) and finished == True and isinstance(heliumvoidfraction, (float, np.float64)) and pd.isna(warning_message)):
         # 如果不符合处理条件，输出信息并跳过当前迭代
-            print(f"Skipping {cif_name} due to invalid conditions: finished={finished}, heliumvoidfraction={type(heliumvoidfraction).__name__}, warning={warning_message if pd.notna(warning_message) else 'None'}")
-            continue
+             print(f"Skipping {cif_name} due to invalid conditions: finished={finished}, heliumvoidfraction={type(heliumvoidfraction).__name__}, warning={warning_message         if pd.notna(warning_message) else 'None'}")
+             continue
 
         else:
             print(f"Processing {cif_name} with HeliumVoidFraction {heliumvoidfraction}")

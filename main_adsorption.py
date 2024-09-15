@@ -351,7 +351,7 @@ def main():
             template=template, cutoff=cutoffvdm, cif_dir=cif_dir, cif_file=cif,file_path=file_path)
         cif_name = cif[:-4]
         df = pd.read_csv(file_path)
-        df['finished'] = df['finished'].fillna(False).astype(bool)
+        df['finished'] = df['finished'].replace('Error', False).fillna(False)。astype(bool)
         filtered_data = df[df['name'] == cif_name]
         finished = filtered_data['finished'].values[0]
         heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]

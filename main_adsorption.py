@@ -133,13 +133,28 @@ def get_unit_cell(cif_location, cutoff):
 
 
 def generate_simulation_input(template: str, cutoff: float, cif_dir: str,
-                              cif_file: str,file_path):
+                              cif_file: str, file_path):
     unitcell = get_unit_cell(os.path.join(cif_dir, cif_file), cutoff)
     cif_name = cif_file[:-4]
     df = pd.read_csv(file_path)
+
+    # 过滤数据
     filtered_data = df[df['name'] == cif_name]
-    heliumvoidfraction=filtered_data['helium_excess_widom'].values[0]
-    return template.format(cif_name=cif_name, cutoff=cutoff, unitcell=unitcell,heliumvoidfraction=heliumvoidfraction)
+
+    # 检查过滤后的数据是否为空
+    if filtered_data.empty:
+        print(f"警告: 未找到 {cif_name} 的相关数据，跳过模拟。")
+        return None  # 或根据需要抛出异常
+    
+    # 检查 'helium_excess_widom' 列是否缺失或为 NaN
+    if 'helium_excess_widom' not in filtered_data.columns or pd.isna(filtered_data['helium_excess_widom'].values[0]):
+        print(f"警告: {cif_name} 的 'helium_excess_widom' 缺失或为 NaN，跳过模拟。")
+        return None  # 或根据需要抛出异常
+
+    # 获取 helium void fraction 的值
+    heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]
+    
+    return template.format(cif_name=cif_name, cutoff=cutoff, unitcell=unitcell, heliumvoidfraction=heliumvoidfraction)
 
 
 def work(cif_dir: str, cif_file: str, RASPA_dir: str, result_file: str, components: str, headers: str, input_text: str,
@@ -347,31 +362,45 @@ def main():
 
     for cif in cifs:
         q.get()
-        input_text = generate_simulation_input(
-            template=template, cutoff=cutoffvdm, cif_dir=cif_dir, cif_file=cif,file_path=file_path)
+        input_text = generate_simulation_input(template=template, cutoff=cutoffvdm, cif_dir=cif_dir, cif_file=cif, file_path=file_path)
         cif_name = cif[:-4]
         df = pd.read_csv(file_path)
         df['finished'] = df['finished'].replace('Error', False).fillna(False).astype(bool)
         filtered_data = df[df['name'] == cif_name]
-        finished = filtered_data['finished'].values[0]
-        heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]
-        warning_message = filtered_data['warning'].values[0]
+
+    # 检查过滤后的数据是否为空
+        if filtered_data.empty:
+            print(f"警告: 未找到 {cif_name} 的相关数据，跳过模拟。")
+            continue  # 跳过当前的迭代
+
+        heliumvoidfraction = filtered_data['helium_excess_widom'].values[0] if 'helium_excess_widom' in filtered_data.columns else None
+        if heliumvoidfraction is None:
+            print(f"警告: {cif_name} 的 'helium_excess_widom' 列为空，跳过模拟。")
+            continue
 
 
-         # 检查warning_message是否为非NaN且非空字符串
-        if not (pd.notna(finished) and finished == True and isinstance(heliumvoidfraction, (float, np.float64)) and pd.isna(warning_message)):
-        # 如果不符合处理条件，输出信息并跳过当前迭代
-             print(f"Skipping {cif_name} due to invalid conditions: finished={finished}, heliumvoidfraction={type(heliumvoidfraction).__name__}, warning={warning_message         if pd.notna(warning_message) else 'None'}")
-             continue
-
+    # 确保 'finished' 列存在并且不是 NaN
+        if 'finished' in filtered_data.columns and pd.notna(filtered_data['finished'].values[0]):
+            finished = filtered_data['finished'].values[0]
         else:
-            print(f"Processing {cif_name} with HeliumVoidFraction {heliumvoidfraction}")
+            print(f"警告: {cif_name} 的 'finished' 列为空或无效，跳过模拟。")
+            continue  # 跳过当前循环
 
-        thread = threading.Thread(target=work, args=(cif_dir, cif, raspa_dir,
-                                                     result_file, components, headers, input_text, lock, q))
+    # 确保 'helium_excess_widom' 列存在并且不是 NaN
+        if 'helium_excess_widom' in filtered_data.columns and pd.notna(filtered_data['helium_excess_widom'].values[0]):
+            heliumvoidfraction = filtered_data['helium_excess_widom'].values[0]
+        else:
+            print(f"警告: {cif_name} 的 'helium_excess_widom' 列为空或无效，跳过模拟。")
+            continue  # 跳过当前循环
+
+    # 如果符合条件，继续处理
+        print(f"Processing {cif_name} with HeliumVoidFraction {heliumvoidfraction}")
+
+        thread = threading.Thread(target=work, args=(cif_dir, cif, raspa_dir,result_file, components, headers, input_text, lock, q))
         thread.start()
         time.sleep(0.3)
         os.chdir(cur_path)
+
 
     for t in threading.enumerate():
         if t.is_alive() and t.getName() != "MainThread":
